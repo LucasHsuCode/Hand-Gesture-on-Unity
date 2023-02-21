@@ -19,10 +19,15 @@ public class handsample : MonoBehaviour
     [SerializeField] TextMeshProUGUI rightHandText;
     [SerializeField] TextMeshProUGUI leftHandText;
     [SerializeField] TextMeshProUGUI fpsText;
+    [SerializeField] TextMeshProUGUI layoutText;
 
     CoreHMD coreHMD;
     PrimitiveDraw rightDraw;
     PrimitiveDraw leftDraw;
+
+    int LayoutPage1 = 0;
+    int LayoutPage2 = 0;
+
 
     void Awake()
     {
@@ -32,15 +37,8 @@ public class handsample : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        if (coreHMD.UsePerEyeCameras)
-        {   
-            rightDraw = new PrimitiveDraw(coreHMD.RightEyeCamera);
-            leftDraw = new PrimitiveDraw(coreHMD.LeftEyeCamera);
-        }
-        else
-        {
-            rightDraw = new PrimitiveDraw();
-        }
+        layoutText.text = "Layout-1";
+        // ...
     }
 
     // Update is called once per frame
@@ -59,47 +57,19 @@ public class handsample : MonoBehaviour
             var str = CoreHandProvider.Instance.FPS.ToString("F2");
             fpsText.text = $"FPS: {str}";
         }
-    }
-
-    void OnDestroy()
-    {
-        rightDraw?.Dispose();
-        rightDraw = null;
-
-        if (coreHMD.UsePerEyeCameras)
+        if (layoutText)
         {
-            leftDraw?.Dispose();
-            leftDraw = null;
+            int page = getLayoutPage(leftHand);
+            if (page == 1)
+            {
+                layoutText.text = "Layout-1";
+            }
+            else if (page == 2)
+            {
+                layoutText.text = "Layout-2";
+            }
         }
     }
-
-    void LateUpdate() 
-    {
-        if (showBone)
-        {
-            showHand(rightHand);
-            showHand(leftHand);
-        }
-    }
-
-    void OnGUI () 
-    {
-        GUIStyle fontStyle = new GUIStyle();
-        fontStyle.normal.textColor = new Color(255,0,0);	//設置字體顏色
-        fontStyle.fontSize = 40;	//字體大小
-        if (showFPS)
-        {
-            GUI.Label(new UnityEngine.Rect(45, 40, 450, 200), $"FPS {CoreHandProvider.Instance.FPS}", fontStyle);
-        }
-        if (showGUI)
-        {
-            
-            // Debug info for Gravity and Quaternion
-            // GUI.Label(new UnityEngine.Rect(45, 40, 450, 200), $"Hand FPS {coreHMD.handProvider.fps.ToString("#.00")}", fontStyle);
-            GUI.Label(new UnityEngine.Rect(45, 80, 450, 200), $"RH Gesture {getHandString(rightHand)}", fontStyle);
-            GUI.Label(new UnityEngine.Rect(45, 120, 450, 200), $"LH Gesture {getHandString(leftHand)}", fontStyle);
-        }
-	}
 
     string getHandString(CoreHand hand) 
     {
@@ -108,61 +78,26 @@ public class handsample : MonoBehaviour
         return str;
     }
 
-    void showHand(CoreHand handObject)
+    int getLayoutPage(CoreHand hand)
     {
-        if (handObject.isActiveAndEnabled)
+        if (hand.gesture.strictType.ToString() == "One")
         {
-            Vector3[] jarr = handObject.ToPositionArray();
-            DrawProjJoints(jarr, handObject.HandType is HandTypes.Right ? Color.red : Color.blue);
+            LayoutPage1 += 1;
+            LayoutPage2 = 0;
         }
-    }
-
-    void DrawProjJoints(Vector3[] joints, Color color)
-    {
-        DrawColor(color);
-        // Cube
-        for (int i = 0; i < joints.Length; i++)
+        else if (hand.gesture.strictType.ToString() == "Two")
         {
-            // draw.Cube(joints[i], 0.005f);
-            DrawCube(joints[i], 0.005f);
-
+            LayoutPage2 += 1;
+            LayoutPage1 = 0;
         }
-
-        for (int ii = 0; ii < joints.Length; ii++) {
-            HandJoints.JointName parent = HandJoints.ParentJointArray[ii];
-
-            if (parent != HandJoints.JointName.None)
-            {
-                // draw.Line3D(joints[(int) parent], joints[ii], 0.002f);
-                DrawLine3D(joints[(int) parent], joints[ii], 0.002f);
-                Debug.Log($"jarr[{ii}]: ({joints[ii].x}, {joints[ii].y}, {joints[ii].z})");
-
-            }
+        if (LayoutPage1 == 60)
+        {
+            return 1;
         }
-        DrawApply();
-    }
-
-    void DrawColor(Color color)
-    {
-        rightDraw.color = color;
-        if (coreHMD.UsePerEyeCameras) leftDraw.color = color;
-    }
-
-    void DrawCube(Vector3 vec, float scale)
-    {
-        rightDraw.Cube(vec, scale);
-        if (coreHMD.UsePerEyeCameras) leftDraw.Cube(vec, scale);
-    }
-
-    void DrawLine3D(Vector3 v1, Vector3 v2, float thickness)
-    {
-        rightDraw.Line3D(v1, v2, thickness);
-        if (coreHMD.UsePerEyeCameras) leftDraw.Line3D(v1, v2, thickness);
-    }
-
-    void DrawApply()
-    {
-        rightDraw.Apply();
-        if (coreHMD.UsePerEyeCameras) leftDraw.Apply();
+        else if (LayoutPage2 == 60)
+        {
+            return 2;
+        }
+        return 0;
     }
 }
